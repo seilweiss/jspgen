@@ -322,9 +322,10 @@ struct BinMesh
     RwInt32 matIndex;
 };
 
-RwBool RpMeshHeader::StreamRead(RwStream* stream)
+RwBool RpMeshHeader::StreamRead(RwStream* stream, RpGeometry* geometry)
 {
     assert(stream);
+    assert(geometry);
 
     BinMeshHeader mh;
     if (stream->Read32(&mh, sizeof(mh)) != sizeof(mh)) {
@@ -342,24 +343,27 @@ RwBool RpMeshHeader::StreamRead(RwStream* stream)
         }
 
         meshes[i].matIndex = m.matIndex;
-        meshes[i].indices.resize(m.numIndices);
 
-        RwUInt32 indexBuffer[256];
-        RxVertexIndex* dest = &meshes[i].indices[0];
-        RwUInt32 remainingIndices = m.numIndices;
-        while (remainingIndices) {
-            RwUInt32 readIndices = (remainingIndices < 256) ? remainingIndices : 256;
-            RwUInt32 readSize = readIndices * sizeof(RwUInt32);
+        if (!(geometry->format & rpGEOMETRYNATIVE)) {
+            meshes[i].indices.resize(m.numIndices);
 
-            if (stream->Read32(indexBuffer, readSize) != readSize) {
-                return FALSE;
+            RwUInt32 indexBuffer[256];
+            RxVertexIndex* dest = &meshes[i].indices[0];
+            RwUInt32 remainingIndices = m.numIndices;
+            while (remainingIndices) {
+                RwUInt32 readIndices = (remainingIndices < 256) ? remainingIndices : 256;
+                RwUInt32 readSize = readIndices * sizeof(RwUInt32);
+
+                if (stream->Read32(indexBuffer, readSize) != readSize) {
+                    return FALSE;
+                }
+
+                for (RwUInt32 j = 0; j < readIndices; j++) {
+                    *dest++ = (RxVertexIndex)indexBuffer[j];
+                }
+
+                remainingIndices -= readIndices;
             }
-
-            for (RwUInt32 j = 0; j < readIndices; j++) {
-                *dest++ = (RxVertexIndex)indexBuffer[j];
-            }
-
-            remainingIndices -= readIndices;
         }
     }
 
@@ -495,7 +499,7 @@ RwBool RpGeometry::StreamRead(RwStream* stream)
 
     if (stream->FindChunk(rwID_EXTENSION)) {
         if (stream->FindChunk(rwID_BINMESHPLUGIN)) {
-            if (!mesh.StreamRead(stream)) {
+            if (!mesh.StreamRead(stream, this)) {
                 return FALSE;
             }
         }

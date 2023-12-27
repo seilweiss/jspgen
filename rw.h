@@ -155,6 +155,8 @@ struct RwFrame
     RwMatrix matrix;
 };
 
+struct RpGeometry;
+
 struct RpTriangle
 {
     RwUInt16 vertIndex[3];
@@ -182,7 +184,7 @@ struct RpMeshHeader
     RwUInt32 totalIndicesInMesh;
     std::vector<RpMesh> meshes;
 
-    RwBool StreamRead(RwStream* stream);
+    RwBool StreamRead(RwStream* stream, RpGeometry* geometry);
 };
 
 enum RpGeometryFlag
